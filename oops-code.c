@@ -238,7 +238,7 @@ static struct code *parse_oops_code(const char *text)
 	unsigned size = strlen(text) / 3 + 2;
 	struct code *code;
 	unsigned idx = 0;
-	const char *p;
+	char *p;
 	char *n = NULL;
 	unsigned long int num;
 
@@ -247,12 +247,13 @@ static struct code *parse_oops_code(const char *text)
 
 	code->size = size;
 
-	for (p=text; (num=strtoul(p, &n, 16)) < 0x100 && n != p; p=n) {
+	p = strdup(text);
+	n = p;
 
-		if (!code->start_ofs && *n=='>' && (n-text)>3 && *(n-3)=='<') {
+	for (n = strtok(n, "<> "); n && (num = strtoul(n, NULL, 16)) < 0x100; n = strtok(NULL, "<> ")) {
+
+		if (!code->start_ofs && *(n+2)=='>')
 			code->start_ofs = idx;
-			n++;
-		}
 
 		code->bytes[idx++] = num;
 
@@ -263,11 +264,11 @@ static struct code *parse_oops_code(const char *text)
 
 			code->size = size;
 		}
-
-		while (*n && (*n==' ' || *n=='<')) n++;
 	}
 
 	code->count = idx;
+
+	free(p);
 
 	return code;
 }
@@ -382,6 +383,7 @@ static void process(struct conf *conf)
 		"-o %s %s",
 		conf->bits,
 		addr, exe_name, asm_name);
+	printf("------------> cmd %s\n", cmd);
 
 	rc = system (cmd);
 	assert(rc == 0);
